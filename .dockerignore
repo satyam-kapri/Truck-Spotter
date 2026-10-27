@@ -1,0 +1,10 @@
+.venv
+node_modules
+.git
+.env
+tmp
+staticfiles
+dist
+*.pdf
+__pycache__
+.pytest_cache
