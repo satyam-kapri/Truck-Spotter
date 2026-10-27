@@ -153,7 +153,7 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
 .forecast-foot>span { color:#5f819b;font-size:7px; }
 .workspace-foot { background:#07192c;color:#3e627e;border-top:1px solid #112c41;padding:10px 21px;font-size:6px; }
 .workspace-foot button { color:#688da7;font-size:7px; }
-.checkpoint-panel { background:#0b2236;border:1px solid #2d5063;border-radius:10px;box-shadow:0 10px 30px #0004;left:16px;color:#dae8f2; }
+.checkpoint-panel { background:#0b2236;border:1px solid #2d5063;border-radius:10px;box-shadow:0 10px 30px #0004;left:58px;bottom:16px;color:#dae8f2; }
 .checkpoint-title small { color:#7199b3; }
 .checkpoint-title button { color:#759ab3; }
 .checkpoint-weather { border-color:#214156; }
@@ -243,7 +243,7 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
   .forecast-foot>span { font-size:7px; }
   .forecast-foot>span:first-child { max-width:none; }
   .workspace-foot { font-size:6px; }
-  .checkpoint-panel { width:calc(100% - 64px);left:12px; }
+  .checkpoint-panel { width:calc(100% - 62px);left:50px;bottom:16px;padding:13px; }
   .analysis-warnings { margin:5px 12px 0;font-size:8px; }
 }
 
@@ -262,3 +262,7 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
   .forecast-foot .map-legend>div { font-size:10px; }
   .forecast-foot .map-legend button { margin-left:auto; }
 }
+.checkpoint-focus-marker { width:38px;height:38px;border:3px solid #f0fffb;border-radius:50%;background:var(--checkpoint-color);box-shadow:0 0 0 7px color-mix(in srgb,var(--checkpoint-color) 30%,transparent),0 3px 16px #0008;pointer-events:none;display:grid;place-items:center;z-index:2; }
+.checkpoint-focus-number { color:#06192e;font-size:14px;font-weight:800;line-height:1; }
+.checkpoint-focus-label { position:absolute;bottom:47px;left:50%;transform:translateX(-50%);background:#092337;border:1px solid #60899a;border-radius:6px;padding:6px 9px;white-space:nowrap;font-size:10px;color:#effaff;font-weight:600;box-shadow:0 3px 12px #0004; }
+.checkpoint-list button.checkpoint-row-selected { background:#113c49;box-shadow:inset 3px 0 #37d8cb;padding-left:8px;color:#e7fff9; }

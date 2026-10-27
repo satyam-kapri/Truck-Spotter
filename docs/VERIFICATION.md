@@ -14,6 +14,14 @@
 - Local Git repository created and application source committed.
 - Review screenshot saved at `output/spotter-preview.png`; local preview left on a complete, labeled demo.
 
+## Checkpoint interaction update — 28 October 2026
+
+- Production build and TypeScript check pass after the interaction fix.
+- Verified that selecting checkpoint 6 from Inspect checkpoints opens its risk details, highlights the corresponding list row, centers the map, and displays a numbered marker with the same checkpoint label.
+- Closed the details and clicked the checkpoint directly on the map; its details reopened and remained open. A unified map click handler prioritizes checkpoint hits over the route underneath.
+- Verified the same list-to-map interaction at 390×844. The map tab opens automatically and the marker remains visible above the details panel. Restored the normal viewport afterward.
+- Review screenshot: `output/spotter-checkpoint-selection.png`.
+
 ## Limits and remaining external deliverables
 
 - No authenticated GitHub remote or container hosting destination is configured. The repository is local; a public hosted URL has not been created.

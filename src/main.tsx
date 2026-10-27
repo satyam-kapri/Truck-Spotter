@@ -34,9 +34,11 @@ function App(){
  const [hour,setHour]=useState(0),[layer,setLayer]=useState<'risk'|'wind'|'rain'|'snow'>('risk'),[showWeather,setShowWeather]=useState(true),[playing,setPlaying]=useState(false),[checkpoint,setCheckpoint]=useState<Checkpoint|null>(null),[showRules,setShowRules]=useState(false),[mobileTab,setMobileTab]=useState('trip');
  const mapNode=useRef<HTMLDivElement>(null), map=useRef<maplibregl.Map|null>(null),[mapReady,setMapReady]=useState(false),[mapError,setMapError]=useState(false);
  const analysisRef=useRef(analysis),selectedRef=useRef(selected);analysisRef.current=analysis;selectedRef.current=selected;
+ const checkpointRef=useRef(checkpoint);checkpointRef.current=checkpoint;
  const requestId=useRef(0);
  const resultsHeading=useRef<HTMLDivElement>(null),scrollResultsOnSuccess=useRef(false);
  const current=analysis?.routes.find(r=>r.id===selected);
+ function openCheckpoint(point:Checkpoint){setCheckpoint(point);setMobileTab('map')}
 
  async function analyzeTrip(scrollToResults=false){
    const id=++requestId.current;setLoading(true);setError('');setCheckpoint(null);setPlaying(false);
@@ -57,7 +59,7 @@ function App(){
  },[analysis]);
  useEffect(()=>{if(!playing)return;const id=setInterval(()=>setHour(h=>(h+1)%49),650);return()=>clearInterval(id)},[playing]);
  useEffect(()=>{const id=requestAnimationFrame(()=>map.current?.resize());return()=>cancelAnimationFrame(id)},[mobileTab]);
- useEffect(()=>{if(!showRules)return;const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setShowRules(false)};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[showRules]);
+ useEffect(()=>{if(!showRules&&!checkpoint)return;const close=(e:KeyboardEvent)=>{if(e.key==='Escape'){if(showRules)setShowRules(false);else setCheckpoint(null)}};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[showRules,checkpoint]);
  useEffect(()=>{
    if(!mapNode.current)return;
    try{
@@ -86,13 +88,23 @@ function App(){
        m.addLayer({id:'route-lines',type:'line',source:'routes',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':['get','color'],'line-width':['case',['get','selected'],5,3],'line-opacity':['case',['get','selected'],1,.55]}});
        m.addSource('points',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
        m.addLayer({id:'checkpoint-points',type:'circle',source:'points',paint:{'circle-radius':['case',['get','endpoint'],8,4],'circle-color':['get','color'],'circle-stroke-color':'#0b1b2d','circle-stroke-width':2}});
-       m.on('click','checkpoint-points',e=>{const f=e.features?.[0];if(f){const p=analysisRef.current?.routes.find(r=>r.id===selectedRef.current)?.checkpoints.find(p=>p.id===Number(f.properties?.id));if(p)setCheckpoint(p)}});
-       m.on('click','route-lines',e=>{const id=e.features?.[0]?.properties?.routeId;if(id){setSelected(id);setCheckpoint(null)}});
+       // A single click handler gives checkpoints priority over the route beneath
+       // them, so the route handler cannot immediately close checkpoint details.
+       m.on('click',e=>{
+         const hits=m.queryRenderedFeatures([[e.point.x-12,e.point.y-12],[e.point.x+12,e.point.y+12]],{layers:['checkpoint-points']});
+         const nearest=hits.filter(f=>f.geometry.type==='Point').sort((a,b)=>{
+           const aPoint=m.project((a.geometry as GeoJSON.Point).coordinates as [number,number]),bPoint=m.project((b.geometry as GeoJSON.Point).coordinates as [number,number]);
+           return Math.hypot(aPoint.x-e.point.x,aPoint.y-e.point.y)-Math.hypot(bPoint.x-e.point.x,bPoint.y-e.point.y);
+         })[0];
+         if(nearest){const p=analysisRef.current?.routes.find(r=>r.id===selectedRef.current)?.checkpoints.find(p=>p.id===Number(nearest.properties.id));if(p){openCheckpoint(p);return}}
+         const route=m.queryRenderedFeatures(e.point,{layers:['route-lines']})[0];
+         if(route){setSelected(route.properties.routeId);setCheckpoint(null)}
+       });
        for(const layer of ['route-lines','checkpoint-points']){m.on('mouseenter',layer,()=>{m.getCanvas().style.cursor='pointer'});m.on('mouseleave',layer,()=>{m.getCanvas().style.cursor=''})}
        setMapReady(true);
      });
      m.on('error',e=>{if(e.error?.message.includes('WebGL'))setMapError(true)});
-     const observer=new ResizeObserver(()=>{m.resize();const a=analysisRef.current;if(a&&m.getContainer().clientWidth>0){const bounds=new maplibregl.LngLatBounds();a.routes.forEach(r=>r.coordinates.forEach(c=>bounds.extend(c)));m.fitBounds(bounds,{padding:{top:60,bottom:65,left:45,right:45},duration:0})}});
+     const observer=new ResizeObserver(()=>{m.resize();const a=analysisRef.current;if(a&&m.getContainer().clientWidth>0){if(checkpointRef.current){focusCheckpoint(m,checkpointRef.current,false);return}const bounds=new maplibregl.LngLatBounds();a.routes.forEach(r=>r.coordinates.forEach(c=>bounds.extend(c)));m.fitBounds(bounds,{padding:{top:60,bottom:65,left:45,right:45},duration:0})}});
      observer.observe(mapNode.current);
      return()=>{observer.disconnect();m.remove();map.current=null};
    }catch{setMapError(true)}
@@ -109,6 +121,16 @@ function App(){
    const r=analysis.routes.find(r=>r.id===selected)!;
    (m.getSource('points') as maplibregl.GeoJSONSource).setData({type:'FeatureCollection',features:r.checkpoints.map((p,i)=>({type:'Feature',geometry:{type:'Point',coordinates:p.coordinates},properties:{id:p.id,color:COLORS[p.risk.level],endpoint:i===0||i===r.checkpoints.length-1}}))});
  },[analysis,selected,mapReady]);
+ useEffect(()=>{
+   const m=map.current;if(!m||!mapReady||!checkpoint)return;
+   const element=document.createElement('div');element.className='checkpoint-focus-marker';element.style.setProperty('--checkpoint-color',COLORS[checkpoint.risk.level]);element.setAttribute('aria-hidden','true');
+   const number=document.createElement('span');number.className='checkpoint-focus-number';number.textContent=String(checkpoint.id+1);
+   const label=document.createElement('span');label.className='checkpoint-focus-label';label.textContent=`Checkpoint ${checkpoint.id+1}`;
+   element.append(number,label);
+   const marker=new maplibregl.Marker({element,anchor:'center'}).setLngLat(checkpoint.coordinates).addTo(m);
+   const frame=requestAnimationFrame(()=>{m.resize();focusCheckpoint(m,checkpoint)});
+   return()=>{cancelAnimationFrame(frame);marker.remove()};
+ },[checkpoint,mapReady,mobileTab]);
  useEffect(()=>{const m=map.current;if(!m||!mapReady||!analysis)return;const bounds=new maplibregl.LngLatBounds();analysis.routes.forEach(r=>r.coordinates.forEach(c=>bounds.extend(c)));m.fitBounds(bounds,{padding:{top:60,bottom:70,left:50,right:50},duration:900})},[analysis,mapReady]);
  useEffect(()=>{
    const m=map.current;if(!m||!mapReady)return;
@@ -148,7 +170,7 @@ function App(){
      </button>})}
    </div>
    {analysis&&<div className="recommendation-note"><ShieldCheck size={18}/><div><strong>{analysis.recommended_id?'Why this route?':'No route recommended'}</strong><p>{analysis.reason}</p></div></div>}
-   {current&&<details className="checkpoint-list"><summary>Inspect {current.checkpoints.length} checkpoints <ChevronDown size={13}/></summary><div className="checkpoint-list-heading"><span>MILE</span><span>ETA</span><span>RISK</span></div>{current.checkpoints.map(p=><button key={p.id} onClick={()=>{setCheckpoint(p);setMobileTab('map');map.current?.easeTo({center:p.coordinates,duration:600})}}><span>{fmt(p.mile,1)}</span><span>{time(p.eta)}</span><span style={{color:COLORS[p.risk.level]}}>{p.risk.level}</span><ChevronRight size={12}/></button>)}</details>}
+   {current&&<details className="checkpoint-list"><summary>Inspect {current.checkpoints.length} checkpoints <ChevronDown size={13}/></summary><div className="checkpoint-list-heading"><span>MILE</span><span>ETA</span><span>RISK</span></div>{current.checkpoints.map(p=><button key={p.id} className={checkpoint?.id===p.id?'checkpoint-row-selected':''} aria-pressed={checkpoint?.id===p.id} aria-label={`Checkpoint ${p.id+1}, mile ${fmt(p.mile,1)}, ${p.risk.level} risk`} onClick={()=>openCheckpoint(p)}><span>{fmt(p.mile,1)}</span><span>{time(p.eta)}</span><span style={{color:COLORS[p.risk.level]}}>{p.risk.level}</span><ChevronRight size={12}/></button>)}</details>}
    <div className="sidebar-foot"><ShieldCheck size={14}/> Assessment based on supplied weather rules.</div>
   </aside>
   <section className={'workspace '+(mobileTab==='map'?'mobile-visible':'')} aria-label="Route map and forecast">
@@ -157,8 +179,8 @@ function App(){
    <div className="map-area"><div className="map-canvas" ref={mapNode}/>{mapError&&<div className="map-fallback">Map rendering is unavailable on this device. Route details remain available in the comparison panel.</div>}
     <div className="map-top-line"><span className="map-view-label"><span/> {current?.name||'Route overview'}</span><button onClick={()=>setShowWeather(v=>!v)} className={'layer-button '+(showWeather?'enabled':'')}><Layers3 size={15}/><span>Weather layer</span><span className="toggle"><i/></span></button></div>
     <button className="fit-map" onClick={fitMap} aria-label="Fit all routes"><LocateFixed size={18}/></button>
-    {current&&<div className="map-trip-summary"><div className="summary-icon"><Navigation size={21}/></div><div><small>SELECTED JOURNEY</small><strong>{duration(current.duration_seconds)} <span>· {fmt(current.distance_miles)} mi</span></strong></div><div className="arrival"><small>ARRIVAL</small><strong>{time(current.checkpoints.at(-1)!.eta)}</strong></div></div>}
-    {checkpoint&&<div className="checkpoint-panel"><div className="checkpoint-title"><div><small>CHECKPOINT {checkpoint.id+1} · MILE {fmt(checkpoint.mile)}</small><h3 style={{color:COLORS[checkpoint.risk.level]}}>{checkpoint.risk.level} risk</h3></div><button onClick={()=>setCheckpoint(null)} aria-label="Close checkpoint"><X size={17}/></button></div><div className="checkpoint-weather"><span><Wind size={18}/><strong>{fmt(checkpoint.weather.wind_mph,1)}</strong> mph</span><span><CloudRain size={18}/><strong>{fmt(checkpoint.weather.rain_in_hr,2)}</strong> in/hr</span><span><Snowflake size={18}/><strong>{fmt(checkpoint.weather.snow_in_hr,2)}</strong> in/hr</span></div><p><Clock3 size={13}/> Estimated arrival {time(checkpoint.eta)}</p>{checkpoint.risk.reasons.map((reason,i)=><p key={i}>{reason}</p>)}</div>}
+    {current&&!checkpoint&&<div className="map-trip-summary"><div className="summary-icon"><Navigation size={21}/></div><div><small>SELECTED JOURNEY</small><strong>{duration(current.duration_seconds)} <span>· {fmt(current.distance_miles)} mi</span></strong></div><div className="arrival"><small>ARRIVAL</small><strong>{time(current.checkpoints.at(-1)!.eta)}</strong></div></div>}
+    {checkpoint&&<div className="checkpoint-panel" role="dialog" aria-modal="false" aria-label={`Checkpoint ${checkpoint.id+1} weather risk details`}><div className="checkpoint-title"><div><small>CHECKPOINT {checkpoint.id+1} · MILE {fmt(checkpoint.mile)}</small><h3 style={{color:COLORS[checkpoint.risk.level]}}>{checkpoint.risk.level} risk</h3></div><button onClick={()=>setCheckpoint(null)} aria-label="Close checkpoint"><X size={17}/></button></div><div className="checkpoint-weather"><span><Wind size={18}/><strong>{fmt(checkpoint.weather.wind_mph,1)}</strong> mph</span><span><CloudRain size={18}/><strong>{fmt(checkpoint.weather.rain_in_hr,2)}</strong> in/hr</span><span><Snowflake size={18}/><strong>{fmt(checkpoint.weather.snow_in_hr,2)}</strong> in/hr</span></div><p><Clock3 size={13}/> Estimated arrival {time(checkpoint.eta)}</p>{checkpoint.risk.reasons.map((reason,i)=><p key={i}>{reason}</p>)}</div>}
     {loading&&<div className="map-loading"><LoaderCircle className="spin" size={18}/> Matching forecasts to arrival times</div>}
    </div>
    <section className="forecast" id="forecast"><div className="forecast-heading"><div><span className="eyebrow">48-HOUR OUTLOOK</span><h2>Corridor forecast</h2></div><div className="weather-tabs">{([{id:'risk',label:'Combined risk',icon:ShieldCheck},{id:'wind',label:'Wind',icon:Wind},{id:'rain',label:'Rain',icon:CloudRain},{id:'snow',label:'Snow',icon:Snowflake}] as const).map(t=><button key={t.id} className={layer===t.id?'active':''} onClick={()=>setLayer(t.id)}><t.icon size={14}/>{t.label}</button>)}</div></div>
@@ -170,6 +192,12 @@ function App(){
   </main>
   {showRules&&<div className="modal-backdrop" onClick={()=>setShowRules(false)}><section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setShowRules(false)} aria-label="Close risk rules"><X size={20}/></button><div className="eyebrow">THE METHOD</div><h2 id="rules-title">A recommendation you can inspect.</h2><p>We assess weather at each checkpoint’s estimated arrival time. The highest weather or load risk wins.</p><div className="rules-table"><table><thead><tr><th>Condition</th><th>Low</th><th>Moderate</th><th>High</th><th>Severe</th><th>No Travel</th></tr></thead><tbody><tr><th>Wind · mph</th><td>&lt;25</td><td>25–&lt;35</td><td>35–&lt;45</td><td>45–&lt;55</td><td>≥55</td></tr><tr><th>Rain · in/hr</th><td>&lt;.10</td><td>.10–&lt;.25</td><td>.25–&lt;.50</td><td>.50–1.00</td><td>&gt;1.00</td></tr><tr><th>Snow · in/hr</th><td>&lt;.5</td><td>.5–&lt;1</td><td>1–&lt;2</td><td>2–3</td><td>&gt;3</td></tr></tbody></table></div><h3>Load changes the assessment</h3><p>45–&lt;55 mph wind with more than 30,000 lb means No Travel. 35–&lt;45 mph with more than 40,000 lb means Severe. At 55 mph, all loads are No Travel.</p><h3>How we choose</h3><p>Exclude No Travel and incomplete routes. Then compare, in order: fewest Severe miles, fewest High miles, lowest distance-weighted risk, shortest driving time. Each interval uses the more restrictive endpoint risk.</p><h3>Two views of time</h3><p>Route colors use arrival-time weather. The slider shows the whole corridor at one selected instant, from departure to +48 hours. It does not change the recommendation.</p><p className="method-note">Driving times exclude breaks. Automotive routing does not assess truck clearances or axle limits. Sampled forecasts may miss hazards between checkpoints. The demo uses synthetic weather and illustrative corridors. Live mode uses third-party forecasts; missing data stays Unknown.</p><button className="analyze-button" onClick={()=>setShowRules(false)}>Back to the journey <ArrowRight size={17}/></button></section></div>}
  </div>
+}
+
+function focusCheckpoint(m:maplibregl.Map,point:Checkpoint,animate=true){
+ const narrow=m.getContainer().clientWidth<650;
+ const offset:[number,number]=narrow?[0,-Math.min(110,m.getContainer().clientHeight*.25)]:[60,0];
+ m.easeTo({center:point.coordinates,zoom:Math.max(m.getZoom(),7),offset,duration:animate&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches?550:0});
 }
 
 function routeSection(r:Route,a:Checkpoint,b:Checkpoint):[number,number][]{
