@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import requests
 from django.core.cache import cache
-from .domain import distance, risk
+from .domain import distance, interpolate
 
 
 class ProviderError(Exception):
@@ -68,6 +68,36 @@ def routes(origin, destination, departure):
         result.append({'id': f'route-{len(result)+1}', 'name': ['Primary route', 'Alternative route', 'Third route'][len(result)], 'coordinates': coords, 'segment_distances': ds, 'segment_durations': ts, 'distance_miles': sum(ds)/1609.344, 'duration_seconds': sum(ts), 'provider': provider, 'timing': timing})
         if len(result) == 3:
             break
+    # Ask the provider for a bounded corridor detour if its automatic alternatives
+    # are insufficient. These remain real provider-computed road routes.
+    if not token and len(result) < 3 and result[0]['distance_miles'] > 50:
+        midpoint = interpolate(origin, destination, .5)
+        import math
+        dx = (destination[0]-origin[0])*math.cos(math.radians(midpoint[1]))
+        dy = destination[1]-origin[1]
+        length = max(.001, math.hypot(dx,dy))
+        offset = min(.8, max(.3, length*.12))
+        for direction in (-1,1):
+            via = [midpoint[0]+direction*(-dy/length)*offset/max(.2,math.cos(math.radians(midpoint[1]))), midpoint[1]+direction*(dx/length)*offset]
+            coords_string = ';'.join(','.join(map(str,p)) for p in [origin,via,destination])
+            try:
+                detour = get_json(f'{base}/route/v1/driving/{coords_string}', {'alternatives':'false','annotations':'distance,duration','overview':'full','geometries':'geojson','radiuses':'unlimited;10000;unlimited'})
+                if detour.get('code') != 'Ok' or not detour.get('routes'):
+                    continue
+                r = detour['routes'][0]
+                coords = r['geometry']['coordinates']
+                signature = {tuple(round(v,4) for v in p) for p in coords}
+                if any(len(signature & {tuple(round(v,4) for v in p) for p in existing['coordinates']})/max(1,len(signature)) > .90 for existing in result):
+                    continue
+                ds = [d for leg in r['legs'] for d in leg.get('annotation',{}).get('distance',[])]
+                ts = [t for leg in r['legs'] for t in leg.get('annotation',{}).get('duration',[])]
+                if len(ds) != len(coords)-1 or len(ts) != len(ds) or sum(ds)/1609.344 > result[0]['distance_miles']*1.5+25:
+                    continue
+                result.append({'id':f'route-{len(result)+1}','name':'Alternate corridor · via point','coordinates':coords,'segment_distances':ds,'segment_durations':ts,'distance_miles':sum(ds)/1609.344,'duration_seconds':sum(ts),'provider':provider,'timing':'provider segment durations','via_coordinates':via})
+                if len(result)==3:
+                    break
+            except (ProviderError, KeyError, TypeError):
+                continue
     return result
 
 

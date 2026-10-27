@@ -47,12 +47,14 @@ function App(){
  }
  useEffect(()=>{void analyzeTrip()},[]);
  useEffect(()=>{if(!playing)return;const id=setInterval(()=>setHour(h=>(h+1)%49),650);return()=>clearInterval(id)},[playing]);
+ useEffect(()=>{const id=requestAnimationFrame(()=>map.current?.resize());return()=>cancelAnimationFrame(id)},[mobileTab]);
+ useEffect(()=>{if(!showRules)return;const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setShowRules(false)};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[showRules]);
  useEffect(()=>{
    if(!mapNode.current)return;
    try{
      const m=new maplibregl.Map({container:mapNode.current,style:'https://tiles.openfreemap.org/styles/positron',center:[-87.6,39.1],zoom:5.5,attributionControl:{compact:true}});
      map.current=m;
-     m.addControl(new maplibregl.NavigationControl({showCompass:false}),'bottom-right');
+     m.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-left');
      m.on('load',()=>{
        m.addSource('corridor',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
        m.addLayer({id:'weather',type:'fill',source:'corridor',paint:{'fill-color':['get','color'],'fill-opacity':.23}});
@@ -82,7 +84,7 @@ function App(){
    const r=analysis.routes.find(r=>r.id===selected)!;
    (m.getSource('points') as maplibregl.GeoJSONSource).setData({type:'FeatureCollection',features:r.checkpoints.map((p,i)=>({type:'Feature',geometry:{type:'Point',coordinates:p.coordinates},properties:{id:p.id,color:COLORS[p.risk.level],endpoint:i===0||i===r.checkpoints.length-1}}))});
  },[analysis,selected,mapReady]);
- useEffect(()=>{const m=map.current;if(!m||!mapReady||!analysis)return;const bounds=new maplibregl.LngLatBounds();analysis.routes.forEach(r=>r.coordinates.forEach(c=>bounds.extend(c)));m.fitBounds(bounds,{padding:{top:90,bottom:150,left:85,right:85},duration:900})},[analysis,mapReady]);
+ useEffect(()=>{const m=map.current;if(!m||!mapReady||!analysis)return;const bounds=new maplibregl.LngLatBounds();analysis.routes.forEach(r=>r.coordinates.forEach(c=>bounds.extend(c)));m.fitBounds(bounds,{padding:{top:60,bottom:70,left:50,right:50},duration:900})},[analysis,mapReady]);
  useEffect(()=>{
    const m=map.current;if(!m||!mapReady)return;
    const features:GeoJSON.Feature[]=!corridor||!showWeather?[]:corridor.coordinates.map((c,i)=>{

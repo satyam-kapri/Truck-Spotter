@@ -94,6 +94,8 @@ def analyze(request):
         warnings = ['Illustrative demo: synthetic weather, estimated corridors and driving times.'] if demo else ['Automotive routes do not assess truck clearance, axle limits, or rest stops.']
         if len(routes) < 3:
             warnings.append(f'The provider found {len(routes)} distinct route(s); three are not available for this journey.')
+        if any('via_coordinates' in r for r in routes):
+            warnings.append('An alternate corridor uses an intermediate via point; its road route and timing are computed by the routing provider.')
         result = {'id': analysis_id, 'mode': data['mode'], 'origin': data['origin'], 'destination': data['destination'], 'departure': departure.isoformat(), 'load_lb': data['load_lb'], 'spacing_miles': data['spacing_miles'], 'routes': routes, 'recommended_id': recommended, 'ranked_ids': ranked, 'reason': reason, 'warnings': warnings, 'policy_version': '1.0', 'fetched_at': datetime.now(timezone.utc).isoformat(), 'expires_at': (datetime.now(timezone.utc)+timedelta(minutes=15)).isoformat()}
         cache.set('analysis:'+analysis_id, result, 900)
         return Response(result)
