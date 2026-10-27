@@ -96,13 +96,6 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
 .sidebar-foot { color:#506f89;border-color:#1c3348;font-size:7px;line-height:1.6; }
 .sidebar-foot svg { color:#416c7d; }
 .workspace { background:#06192e; }
-.route-statusbar { display:flex;align-items:center;gap:9px;padding:15px 20px;min-height:59px;flex-shrink:0; }
-.status-chip { border:1px solid;border-radius:30px;padding:9px 12px;font-size:8px;font-weight:650;letter-spacing:.45px;white-space:nowrap;display:flex;align-items:center;gap:5px; }
-.status-chip i { width:4px;height:4px;border-radius:50%;background:currentColor; }
-.status-chip.eligible { color:#3ec5a7;border-color:#176a66; }
-.status-chip.options { color:#84afe8;border-color:#294f7d; }
-.status-chip.blocked { color:#fb7390;border-color:#743348; }
-.status-note { margin-left:auto;font-size:7px;color:#4e718d;display:flex;align-items:center;gap:5px;white-space:nowrap; }
 .map-toolbar { background:#06192e;border:0;padding:0 22px;height:40px; }
 .journey-title { font-size:11px;gap:11px; }
 .journey-title>svg:first-child { color:#50c2c1; }
@@ -191,18 +184,12 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
   .recommended { font-size:6px; }
   .route-foot { font-size:8px; }
   .route-metrics .risk-label { font-size:8px; }
-  .status-chip { font-size:10px;padding:11px 16px; }
-  .route-statusbar { padding:17px 24px; }
-  .status-note { font-size:9px; }
   .forecast { padding:24px; }
   .weather-tabs button { font-size:10px;padding:9px 12px; }
 }
 @media (max-width:1180px) and (min-width:761px) {
   .sidebar { width:300px;padding:22px 17px 0; }
   .header-context { display:none; }
-  .route-statusbar { gap:7px;padding:13px 16px; }
-  .status-note { display:none; }
-  .status-chip { padding:8px 10px;font-size:7px; }
   .map-area { margin-left:16px;margin-right:16px; }
   .map-toolbar { padding:0 17px; }
   .forecast { padding:18px 17px 14px; }
@@ -240,9 +227,6 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
   .results-heading>span { font-size:8px; }
   .recommendation-note p { font-size:10px; }
   .sidebar-foot { font-size:9px; }
-  .route-statusbar { min-height:56px;padding:14px 13px;gap:7px; }
-  .status-chip { font-size:7px;padding:8px 10px;letter-spacing:.25px; }
-  .status-note { display:none; }
   .map-toolbar { padding:0 15px;height:38px; }
   .journey-title { font-size:11px;gap:7px; }
   .data-badge { font-size:5px; }
@@ -265,3 +249,5 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
   .checkpoint-panel { width:calc(100% - 64px);left:12px; }
   .analysis-warnings { margin:5px 12px 0;font-size:8px; }
 }
+
+@media (max-width:760px) { .results-heading { scroll-margin-top:58px; } }

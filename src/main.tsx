@@ -35,18 +35,26 @@ function App(){
  const mapNode=useRef<HTMLDivElement>(null), map=useRef<maplibregl.Map|null>(null),[mapReady,setMapReady]=useState(false),[mapError,setMapError]=useState(false);
  const analysisRef=useRef(analysis),selectedRef=useRef(selected);analysisRef.current=analysis;selectedRef.current=selected;
  const requestId=useRef(0);
+ const resultsHeading=useRef<HTMLDivElement>(null),scrollResultsOnSuccess=useRef(false);
  const current=analysis?.routes.find(r=>r.id===selected);
 
- async function analyzeTrip(){
+ async function analyzeTrip(scrollToResults=false){
    const id=++requestId.current;setLoading(true);setError('');setCheckpoint(null);setPlaying(false);
    try{
      const result=await api<Analysis>('/api/route-analyses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({origin,destination,departure:new Date(departure).toISOString(),load_lb:Number(load),spacing_miles:spacing,mode})});
      if(id!==requestId.current)return;
+     scrollResultsOnSuccess.current=scrollToResults;
      setAnalysis(result);setSelected(result.recommended_id||result.routes[0].id);setCorridor(null);setHour(0);setCorridorError('');setCorridorLoading(true);
      api<Corridor>(`/api/route-analyses/${result.id}/corridor`).then(c=>{if(id===requestId.current)setCorridor(c)}).catch(e=>{if(id===requestId.current)setCorridorError(e.message)}).finally(()=>{if(id===requestId.current)setCorridorLoading(false)});
    }catch(e){if(id===requestId.current)setError((e as Error).message)}finally{if(id===requestId.current)setLoading(false)}
  }
  useEffect(()=>{void analyzeTrip()},[]);
+ useEffect(()=>{
+   if(!analysis||!scrollResultsOnSuccess.current)return;
+   scrollResultsOnSuccess.current=false;
+   const frame=requestAnimationFrame(()=>resultsHeading.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}));
+   return()=>cancelAnimationFrame(frame);
+ },[analysis]);
  useEffect(()=>{if(!playing)return;const id=setInterval(()=>setHour(h=>(h+1)%49),650);return()=>clearInterval(id)},[playing]);
  useEffect(()=>{const id=requestAnimationFrame(()=>map.current?.resize());return()=>cancelAnimationFrame(id)},[mobileTab]);
  useEffect(()=>{if(!showRules)return;const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setShowRules(false)};document.addEventListener('keydown',close);return()=>document.removeEventListener('keydown',close)},[showRules]);
@@ -123,14 +131,14 @@ function App(){
   <aside className={'sidebar '+(mobileTab==='trip'?'mobile-visible':'')}>
    <div className="planner-heading"><div className="eyebrow"><span/> TRIP DETAILS</div><h2>Plan your journey</h2><p>Compare weather at your estimated arrival.</p></div>
    <div className="mode-switch" aria-label="Data mode"><button onClick={()=>setMode('demo')} className={mode==='demo'?'active':''}><Compass size={14}/> Explore demo</button><button onClick={()=>setMode('live')} className={mode==='live'?'active':''}><span className="live-dot"/> Live journey</button></div>
-   <form onSubmit={e=>{e.preventDefault();void analyzeTrip()}}>
+   <form onSubmit={e=>{e.preventDefault();void analyzeTrip(true)}}>
     <div className="places"><PlaceInput label="FROM" value={origin} onChange={setOrigin} disabled={mode==='demo'} kind="origin"/><div className="place-connector"/><PlaceInput label="TO" value={destination} onChange={setDestination} disabled={mode==='demo'} kind="destination"/><button type="button" className="swap-button" aria-label="Swap origin and destination" disabled={mode==='demo'} onClick={()=>{setOrigin(destination);setDestination(origin)}}><ArrowDown size={16}/></button></div>
     <label className="field-label" htmlFor="departure">DEPARTURE <span>Browser local time</span></label><input id="departure" className="field-input" type="datetime-local" required value={departure} onChange={e=>setDeparture(e.target.value)}/>
     <div className="form-row"><div><label className="field-label" htmlFor="load">LOAD WEIGHT</label><div className="unit-input"><Truck size={16}/><input id="load" required type="number" min="0" max="200000" step="1" value={load} onChange={e=>setLoad(e.target.value)}/><span>lb</span></div></div><div><label className="field-label" htmlFor="spacing">CHECKPOINTS</label><div className="select-wrap"><select id="spacing" value={spacing} onChange={e=>setSpacing(Number(e.target.value))}>{[10,25,50].map(v=><option key={v} value={v}>Every {v} mi</option>)}</select><ChevronDown size={14}/></div></div></div>
     <button className="analyze-button" disabled={loading||mode==='live'&&(!origin.label||!destination.label)} type="submit">{loading?<><LoaderCircle className="spin" size={17}/> Assessing your journey…</>:<>Find the best route <ArrowRight size={18}/></>}</button>
     {error&&<p role="alert" className="error-message">{error}</p>}
    </form>
-   <div className="results-heading"><h2>Your route options <span>{analysis?.routes.length||'—'}</span></h2><span>{loading?'Updating…':dirty?'Changes not applied':'Weather at arrival'}</span></div>
+   <div className="results-heading" ref={resultsHeading}><h2>Your route options <span>{analysis?.routes.length||'—'}</span></h2><span>{loading?'Updating…':dirty?'Changes not applied':'Weather at arrival'}</span></div>
    <div className={'route-list '+(loading?'loading':'')}>
     {analysis?.routes.map((route,i)=>{const chosen=selected===route.id,recommended=analysis.recommended_id===route.id;const max=route.summary.blocked?'No Travel':!route.summary.complete?'Unknown':route.summary.miles_by_risk.Severe>0?'Severe':route.summary.miles_by_risk.High>0?'High':route.summary.miles_by_risk.Moderate>0?'Moderate':'Low';return <button key={route.id} className={'route-option '+(chosen?'selected':'')} onClick={()=>{setSelected(route.id);setCheckpoint(null)}}>
       <div className="route-option-top"><span className="route-number">0{i+1}</span><span className="route-name">{route.name}</span>{recommended?<span className="recommended"><ShieldCheck size={11}/> RECOMMENDED</span>:<span className="radio-dot">{chosen&&<i/>}</span>}</div>
@@ -144,7 +152,6 @@ function App(){
    <div className="sidebar-foot"><ShieldCheck size={14}/> Assessment based on supplied weather rules.</div>
   </aside>
   <section className={'workspace '+(mobileTab==='map'?'mobile-visible':'')} aria-label="Route map and forecast">
-   <div className="route-statusbar"><span className="status-chip eligible"><i/> ELIGIBLE ({analysis?.routes.filter(r=>r.summary.complete&&!r.summary.blocked).length??0})</span><span className="status-chip options">ROUTE OPTIONS ({analysis?.routes.length??0})</span><span className="status-chip blocked">NO TRAVEL ({analysis?.routes.filter(r=>r.summary.blocked).length??0})</span><span className="status-note"><ShieldCheck size={13}/> Arrival-time assessment</span></div>
    <div className="map-toolbar"><div className="journey-title"><Navigation size={17}/><strong>{analysis?.origin.label.split(',')[0]||'Your origin'}</strong><ArrowRight size={15}/><strong>{analysis?.destination.label.split(',')[0]||'Destination'}</strong></div><span className={'data-badge '+(analysis?.mode==='live'?'live':'')}>{analysis?.mode==='live'?<><span/> LIVE FORECAST</>:<><span/> ILLUSTRATIVE DEMO</>}</span></div>
    {analysis?.mode==='live'&&<div className="analysis-warnings" role="status"><Info size={12}/><span>{analysis.warnings.join(' ')}</span></div>}
    <div className="map-area"><div className="map-canvas" ref={mapNode}/>{mapError&&<div className="map-fallback">Map rendering is unavailable on this device. Route details remain available in the comparison panel.</div>}
