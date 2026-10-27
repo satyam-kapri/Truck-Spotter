@@ -75,6 +75,8 @@ Tests cover all hazard boundaries, strict load overrides, partial intervals, non
 
 ## Hosting
 
+For Vercel, use the checked-in native Django configuration and follow [docs/VERCEL.md](docs/VERCEL.md). Set the Django framework, clear any `dist` output-directory override, and configure `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and shared `REDIS_URL`. The same deployment serves React and `/api`; a Vite-only deployment will return non-JSON 404 pages for API requests.
+
 Build and run the provided container:
 
 ```text
@@ -84,6 +86,6 @@ docker run --rm -p 8000:8000 -e DJANGO_SECRET_KEY=<random-secret> -e DJANGO_ALLO
 
 The same Django service serves the compiled frontend and API. Configure HTTPS on your container host/reverse proxy. Set a strong secret, explicit hostnames, and provider credentials where needed. The host health check is `GET /api/health`. For a single service deployment the default one-worker configuration preserves analysis cache consistency. Do not scale workers/replicas without a shared cache. `DJANGO_DEBUG=0` is the container default.
 
-No hosted URL, GitHub remote, or Loom link is claimed until it exists. The source, container configuration, and walkthrough script are supplied locally. GitHub publishing requires an authenticated account/remote; hosting requires a compatible container destination; Loom requires recording access.
+Repository: [Truck-Spotter](https://github.com/satyam-kapri/Truck-Spotter). The Vercel deployment target is [truckrouteplanner.vercel.app](https://truckrouteplanner.vercel.app/); confirm `/api/health` returns JSON after applying the deployment settings. The Loom recording script is supplied locally.
 
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the full plan and [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) for the recording script.

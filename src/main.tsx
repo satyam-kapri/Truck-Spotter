@@ -4,6 +4,7 @@ import * as maplibregl from 'maplibre-gl';
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import {ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, ChevronRight, Clock3, CloudRain, Compass, Info, Layers3, LoaderCircle, MapPin, Navigation, Play, ShieldCheck, Snowflake, Truck, Wind, X, Pause, LocateFixed} from 'lucide-react';
 import type {Analysis, Checkpoint, Corridor, Place, RiskLevel, Route} from './types';
+import {api} from './api';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import './theme.css';
@@ -16,7 +17,6 @@ const DEST:Place={label:'Nashville, Tennessee',coordinates:[-86.7816,36.1627]};
 const duration=(s:number)=>`${Math.floor(s/3600)}h ${Math.round(s%3600/60)}m`;
 const fmt=(v:number|null,d=0)=>v===null?'—':v.toLocaleString(undefined,{maximumFractionDigits:d});
 const time=(v:string)=>new Date(v).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
-async function api<T>(url:string, options?:RequestInit):Promise<T>{const r=await fetch(url,options); const data=await r.json();if(!r.ok)throw new Error(data.error||Object.values(data).flat().join(' ')||'Request failed.');return data;}
 
 function PlaceInput({label,value,onChange,disabled,kind}:{label:string;value:Place;onChange:(v:Place)=>void;disabled:boolean;kind:string}){
  const [query,setQuery]=useState(value.label),[results,setResults]=useState<Place[]>([]),[error,setError]=useState('');

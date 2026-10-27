@@ -24,6 +24,8 @@
 
 ## Limits and remaining external deliverables
 
+Vercel configuration update (28 October 2026): the public `/api/health` returned HTTP 404 and plain text, confirming the reported non-JSON API response. Added native Django Vercel configuration, shared Redis cache settings, deployment documentation, and actionable frontend API errors. All 55 backend tests and 6 frontend API tests pass, and the production frontend build succeeds. A live Vercel redeploy with server environment variables and Redis remains to be verified; local checks do not confirm a hosted deployment.
+
 - No authenticated GitHub remote or container hosting destination is configured. The repository is local; a public hosted URL has not been created.
 - Dockerfile is supplied, but the installed Docker client cannot reach a running Docker engine, so a container image build has not been verified here.
 - Loom recording access is unavailable; the recording script is supplied in `docs/WALKTHROUGH.md`.

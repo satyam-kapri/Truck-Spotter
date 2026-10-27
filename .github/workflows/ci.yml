@@ -10,6 +10,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: node --experimental-strip-types --test tests/api.test.mjs
       - run: npm run build
       - uses: actions/setup-python@v5
         with:

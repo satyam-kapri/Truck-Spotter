@@ -5,7 +5,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.cache import cache
 from django.http import FileResponse, HttpResponse
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 from rest_framework import serializers
 from . import domain, providers
@@ -45,8 +45,15 @@ class AnalysisSerializer(serializers.Serializer):
 
 
 @api_view(['GET'])
+@throttle_classes([])
 def health(request):
     return Response({'status': 'ok', 'version': '1.0.0'})
+
+
+@api_view(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])
+@throttle_classes([])
+def api_not_found(request):
+    return Response({'error': 'API endpoint not found.'}, status=404)
 
 
 @api_view(['GET'])
