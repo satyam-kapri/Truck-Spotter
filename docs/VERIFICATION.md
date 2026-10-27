@@ -24,6 +24,8 @@
 
 ## Limits and remaining external deliverables
 
+No-Redis deployment update (28 October 2026): corridor POST requests now carry a signed, compressed, 15-minute trip token. All 65 backend tests pass, including full analysis/corridor flow with DummyCache, complete cache loss between requests, tampered/wrong-trip/expired tokens, and startup on Vercel without `REDIS_URL`. The 6 frontend API tests, Django system check, and frontend production build pass. Actual hosted deployment verification is still required after setting the Django environment variables.
+
 Vercel configuration update (28 October 2026): the public `/api/health` returned HTTP 404 and plain text, confirming the reported non-JSON API response. Added native Django Vercel configuration, shared Redis cache settings, deployment documentation, and actionable frontend API errors. All 55 backend tests and 6 frontend API tests pass, and the production frontend build succeeds. A live Vercel redeploy with server environment variables and Redis remains to be verified; local checks do not confirm a hosted deployment.
 
 - No authenticated GitHub remote or container hosting destination is configured. The repository is local; a public hosted URL has not been created.

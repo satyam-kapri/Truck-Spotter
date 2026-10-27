@@ -16,6 +16,6 @@ COPY backend ./backend
 COPY --from=frontend /app/dist ./dist
 RUN python manage.py collectstatic --noinput
 EXPOSE 8000
-# One threaded worker keeps analysis IDs consistent with the local-memory cache.
-# Switch to a shared cache before increasing workers or running multiple replicas.
+# One threaded worker keeps the default container small. Signed trip tokens allow
+# corridor requests across instances; shared Redis caching is optional.
 CMD ["gunicorn", "backend.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "120", "--access-logfile", "-"]

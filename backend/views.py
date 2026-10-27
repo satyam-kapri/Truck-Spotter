@@ -4,11 +4,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from django.conf import settings
 from django.core.cache import cache
+from django.core import signing
 from django.http import FileResponse, HttpResponse
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 from rest_framework import serializers
 from . import domain, providers
+from .corridor_tokens import make_corridor_token, read_corridor_token
 
 
 class PlaceSerializer(serializers.Serializer):
@@ -104,6 +106,7 @@ def analyze(request):
         if any('via_coordinates' in r for r in routes):
             warnings.append('An alternate corridor uses an intermediate via point; its road route and timing are computed by the routing provider.')
         result = {'id': analysis_id, 'mode': data['mode'], 'origin': data['origin'], 'destination': data['destination'], 'departure': departure.isoformat(), 'load_lb': data['load_lb'], 'spacing_miles': data['spacing_miles'], 'routes': routes, 'recommended_id': recommended, 'ranked_ids': ranked, 'reason': reason, 'warnings': warnings, 'policy_version': '1.0', 'fetched_at': datetime.now(timezone.utc).isoformat(), 'expires_at': (datetime.now(timezone.utc)+timedelta(minutes=15)).isoformat()}
+        result['corridor_token'] = make_corridor_token(result)
         cache.set('analysis:'+analysis_id, result, 900)
         return Response(result)
     except providers.ProviderError as exc:
@@ -114,16 +117,28 @@ def analyze(request):
         return Response({'error': 'A provider returned an invalid response. This journey could not be assessed.'}, status=502)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 def corridor(request, analysis_id):
+    if request.method == 'POST':
+        token = request.data.get('corridor_token') if isinstance(request.data, dict) else None
+        if not isinstance(token, str) or not token or len(token) > 500000:
+            return Response({'error': 'A valid corridor_token is required. Analyze the trip again.'}, status=400)
+        try:
+            analysis = read_corridor_token(token, analysis_id)
+        except signing.SignatureExpired:
+            return Response({'error': 'Analysis expired. Analyze the trip again.'}, status=410)
+        except (signing.BadSignature, KeyError, TypeError, ValueError):
+            return Response({'error': 'Trip token is invalid. Analyze the trip again.'}, status=400)
+    else:
+        # Compatibility for older clients on a single long-running instance.
+        analysis = cache.get('analysis:'+analysis_id)
+    if analysis is None:
+        return Response({'error': 'Analysis expired. Analyze the trip again.'}, status=410)
     result = cache.get('corridor:'+analysis_id)
     if result is not None:
         return Response(result)
-    analysis = cache.get('analysis:'+analysis_id)
-    if analysis is None:
-        return Response({'error': 'Analysis expired. Analyze the trip again.'}, status=410)
     # Create uniform spatial cells near the route union, not its whole bounding box.
-    route_points = [p['coordinates'] for r in analysis['routes'] for p in r['checkpoints']]
+    route_points = [p for r in analysis['routes'] for p in r['coordinates']]
     lat0, lat1 = min(p[1] for p in route_points)-.3, max(p[1] for p in route_points)+.3
     lon0, lon1 = min(p[0] for p in route_points)-.4, max(p[0] for p in route_points)+.4
     step = .20

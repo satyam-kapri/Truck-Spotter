@@ -47,7 +47,7 @@ function App(){
      if(id!==requestId.current)return;
      scrollResultsOnSuccess.current=scrollToResults;
      setAnalysis(result);setSelected(result.recommended_id||result.routes[0].id);setCorridor(null);setHour(0);setCorridorError('');setCorridorLoading(true);
-     api<Corridor>(`/api/route-analyses/${result.id}/corridor`).then(c=>{if(id===requestId.current)setCorridor(c)}).catch(e=>{if(id===requestId.current)setCorridorError(e.message)}).finally(()=>{if(id===requestId.current)setCorridorLoading(false)});
+     api<Corridor>(`/api/route-analyses/${result.id}/corridor`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({corridor_token:result.corridor_token})}).then(c=>{if(id===requestId.current)setCorridor(c)}).catch(e=>{if(id===requestId.current)setCorridorError(e.message)}).finally(()=>{if(id===requestId.current)setCorridorLoading(false)});
    }catch(e){if(id===requestId.current)setError((e as Error).message)}finally{if(id===requestId.current)setLoading(false)}
  }
  useEffect(()=>{void analyzeTrip()},[]);

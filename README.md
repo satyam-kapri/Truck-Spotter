@@ -33,7 +33,7 @@ Departure is explicitly entered in the browser's local timezone and transmitted 
 
 - `backend/domain.py`: pure spherical interpolation, cumulative segment ETAs, weather rules, interval exposure, and deterministic recommendation.
 - `backend/providers.py`: Photon geocoding, OSRM/optional Mapbox directions, Open-Meteo forecasts, and synthetic demo fixtures.
-- `backend/views.py`: input validation, bounded analysis, separately loaded corridor frames, and expiring cached analysis IDs.
+- `backend/views.py`: input validation, bounded analysis, separately loaded corridor frames, and signed expiring trip tokens.
 - `src/main.tsx`: trip form, typed API handling, comparison panel, MapLibre layers, checkpoint inspector, forecast controls, and methodology dialog.
 - `src/types.ts`: explicit response/unit contracts.
 - `src/style.css`: responsive layout, accessible colors/labels, and reduced-motion support.
@@ -52,7 +52,7 @@ The backend owns all risk calculations. Route intervals use the more restrictive
 - The OSRM adapter requests automatic alternatives, then tries up to two bounded lateral via-point corridors if fewer than three exist. These are real provider-computed routes, labeled as via-point alternatives, with detours over 1.5x the primary mileage plus 25 miles rejected. Near-duplicate geometry is rejected. If three candidates still cannot be obtained, the UI reports the actual count. No duplicates are manufactured.
 - Maximum route length is 2,000 miles. Corridor cells are approximately 25 miles from a densified route union, capped at 120 locations. Effective grid resolution is disclosed; it may be coarse for large trips. Forecast cells depict sampled intensity, not radar or exact hazard boundaries.
 - The corridor has 49 hourly frames relative to departure. Changing it never changes route ranking.
-- The initial implementation uses Django's process-local cache, 15-minute analysis expiry and short forecast caching. Restarting loses analyses. The supplied container runs one threaded worker. Use Redis/shared cache before multiple workers or replicas.
+- Corridor POST requests carry a signed trip token valid for 15 minutes, so they work across server instances without Redis. Only coarse corridor geometry is compacted. Process-local forecast/result caching is an optional optimization; `REDIS_URL` enables shared caching if desired. Existing GET-by-ID clients depend on the local analysis cache.
 - No account/history database, task queue, or persistence is required for this version. Large live analyses may take provider-dependent time; route results are independent of corridor loading.
 
 ## Provider configuration
@@ -75,7 +75,7 @@ Tests cover all hazard boundaries, strict load overrides, partial intervals, non
 
 ## Hosting
 
-For Vercel, use the checked-in native Django configuration and follow [docs/VERCEL.md](docs/VERCEL.md). Set the Django framework, clear any `dist` output-directory override, and configure `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and shared `REDIS_URL`. The same deployment serves React and `/api`; a Vite-only deployment will return non-JSON 404 pages for API requests.
+For Vercel, use the checked-in native Django configuration and follow [docs/VERCEL.md](docs/VERCEL.md). Set the Django framework, clear any `dist` output-directory override, and configure `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and `DJANGO_DEBUG=0`. Redis is optional; signed trip tokens support the complete workflow without shared storage. The same deployment serves React and `/api`; a Vite-only deployment will return non-JSON 404 pages for API requests.
 
 Build and run the provided container:
 
@@ -84,7 +84,7 @@ docker build -t spotter .
 docker run --rm -p 8000:8000 -e DJANGO_SECRET_KEY=<random-secret> -e DJANGO_ALLOWED_HOSTS=<your-host> spotter
 ```
 
-The same Django service serves the compiled frontend and API. Configure HTTPS on your container host/reverse proxy. Set a strong secret, explicit hostnames, and provider credentials where needed. The host health check is `GET /api/health`. For a single service deployment the default one-worker configuration preserves analysis cache consistency. Do not scale workers/replicas without a shared cache. `DJANGO_DEBUG=0` is the container default.
+The same Django service serves the compiled frontend and API. Configure HTTPS on your container host/reverse proxy. Set a strong secret, explicit hostnames, and provider credentials where needed. The host health check is `GET /api/health`. The default container uses one threaded worker. The current frontend uses signed tokens for corridor requests, so it does not require shared analysis storage across workers. `DJANGO_DEBUG=0` is the container default.
 
 Repository: [Truck-Spotter](https://github.com/satyam-kapri/Truck-Spotter). The Vercel deployment target is [truckrouteplanner.vercel.app](https://truckrouteplanner.vercel.app/); confirm `/api/health` returns JSON after applying the deployment settings. The Loom recording script is supplied locally.
 

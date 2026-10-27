@@ -30,10 +30,10 @@ def test_vercel_rejects_a_missing_secret():
     assert 'Set DJANGO_SECRET_KEY' in result.stderr
 
 
-def test_vercel_requires_cross_instance_analysis_storage():
+def test_vercel_starts_without_redis():
     result = load_vercel_settings(REDIS_URL='')
-    assert result.returncode != 0
-    assert 'Set REDIS_URL' in result.stderr
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)['cache'] == 'django.core.cache.backends.locmem.LocMemCache'
 
 
 def test_rest_redis_url_is_not_accepted_as_a_tcp_connection():

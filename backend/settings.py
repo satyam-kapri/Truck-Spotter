@@ -31,8 +31,6 @@ if REDIS_URL:
         raise ImproperlyConfigured('REDIS_URL must use redis:// or rediss://, not a Redis REST API URL.')
     CACHES = {'default': {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': REDIS_URL, 'KEY_PREFIX': os.environ.get('CACHE_KEY_PREFIX', 'spotter-v1'), 'OPTIONS': {'socket_connect_timeout': 5, 'socket_timeout': 5}}}
 else:
-    if IS_VERCEL:
-        raise ImproperlyConfigured('Set REDIS_URL to a shared Redis connection URL before deploying. Route and corridor requests can run on different Vercel instances.')
     CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache', 'LOCATION': 'spotter', 'OPTIONS': {'MAX_ENTRIES': 1000}}}
 REST_FRAMEWORK = {'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'], 'UNAUTHENTICATED_USER': None, 'DEFAULT_THROTTLE_CLASSES': ['rest_framework.throttling.AnonRateThrottle'], 'DEFAULT_THROTTLE_RATES': {'anon': '60/min'}}
 SECURE_CONTENT_TYPE_NOSNIFF = True

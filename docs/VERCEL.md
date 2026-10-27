@@ -14,13 +14,13 @@ This repository now selects Vercel's **Django** framework explicitly in `vercel.
 
 See the [official Django deployment guide](https://vercel.com/docs/frameworks/full-stack/django). If using the Vercel CLI, use a current release supporting native Django (the documented minimum is 50.38.0).
 
-## 1. Configure shared Redis
+## 1. No Redis or database required
 
-Provision a managed Redis database, such as through Vercel Marketplace, and copy its **TCP connection string**. Set it as `REDIS_URL`. It must begin with `redis://` or `rediss://`; an HTTPS REST endpoint and REST token are not interchangeable with that URL.
+The frontend sends a signed, compressed trip token in the corridor POST request body. It contains the departure, load, mode, and compact corridor geometry, and expires after 15 minutes. Any Vercel instance can verify it with the same `DJANGO_SECRET_KEY` and compute the forecast without retrieving an analysis from another instance's memory.
 
-The analysis response and the subsequent corridor request may run on different Vercel instances. A process-local cache cannot reliably share the analysis ID between them. Django uses its Redis cache backend when `REDIS_URL` is set. A Vercel deployment without this setting fails early with a clear configuration error rather than deploying an intermittently broken corridor.
+The token is signed, not encrypted; it carries trip information the browser already received and never contains provider credentials. It is sent in a request body rather than the URL. Only the coarse weather-corridor geometry is compacted; route geometry, checkpoint arrival times, and recommendation calculations are unchanged.
 
-Keep the Redis URL/password in server environment variables. Do not add a `VITE_` prefix or put it in Git. This project does not require a relational database or migrations.
+Process-local caching is now an optional speed optimization. A cold cache or another server instance does not break the trip workflow. `REDIS_URL` remains optional for shared caching if you choose to add it later. You do not need Redis, a relational database, or migrations for this deployment.
 
 ## 2. Set Vercel environment variables
 
@@ -31,11 +31,10 @@ In **Project → Settings → Environment Variables**, add these for Production 
 | `DJANGO_SECRET_KEY` | A newly generated long random secret |
 | `DJANGO_DEBUG` | `0` |
 | `DJANGO_ALLOWED_HOSTS` | `truckrouteplanner.vercel.app` plus any custom domain, comma-separated; no `https://` |
-| `REDIS_URL` | Your private managed Redis TCP/TLS connection string |
 
 Vercel's exposed `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL` are also added to allowed hosts automatically. Make sure system environment variables are exposed if relying on automatic preview host support. An explicit allowed-host list can include the exact preview hostname instead.
 
-Optional: `MAPBOX_TOKEN` for Mapbox routing, `ROUTING_BASE_URL` for a production OSRM service, and `CACHE_KEY_PREFIX` to separate cache namespaces if sharing Redis across projects.
+Optional: `MAPBOX_TOKEN` for Mapbox routing, `ROUTING_BASE_URL` for a production OSRM service, and optionally `REDIS_URL`/`CACHE_KEY_PREFIX` if you later want shared caching. Leave `REDIS_URL` unset when not using Redis.
 
 Generate a secret locally with:
 
@@ -72,14 +71,15 @@ https://truckrouteplanner.vercel.app/api/health
 
 Expected: HTTP 200, JSON content type, and `{"status":"ok","version":"1.0.0"}`. This health route intentionally avoids Redis so you can distinguish API deployment from cache connectivity.
 
-Then open the home page and run the demo. Verify three route cards and the corridor forecast. The demo analysis and corridor still use shared Redis, so this second check verifies more than the health endpoint alone. Finally test a live public-city journey.
+Then open the home page and run the demo. Verify three route cards and the corridor forecast. The demo analysis returns the signed token and the frontend sends it with the corridor request; this second check verifies the complete flow. Finally test a live public-city journey.
 
 Troubleshooting:
 
 - **Plain-text 404 at `/api/health`:** the deployed commit/framework/routing still does not expose Django.
 - **Django `DisallowedHost`:** add the actual host to `DJANGO_ALLOWED_HOSTS` or expose Vercel's system hostname variables, then redeploy.
-- **Build error naming `DJANGO_SECRET_KEY` or `REDIS_URL`:** set the missing server environment variable for the relevant deployment environment.
-- **Health succeeds but analysis fails with Redis errors:** check the TCP URL, credentials, provider network/TLS requirements, and runtime logs. Do not disable TLS verification.
+- **Build error naming `DJANGO_SECRET_KEY`:** set the missing server environment variable for the relevant deployment environment.
+- **You previously set an unusable `REDIS_URL`:** remove it and redeploy. The default deployment needs no Redis service.
+- **Invalid/expired trip token:** analyze the trip again. Keep `DJANGO_SECRET_KEY` stable across instances; rotating it invalidates existing tokens.
 - **Function timeout:** inspect provider latency and Vercel function logs. Larger live trips can require more time than a particular plan permits; the supplied duration is a configuration request, not a latency guarantee.
 
-Local builds, API tests, and configuration tests can validate the repository changes. An actual Vercel deployment and managed Redis connection still need a production smoke test after your environment variables are configured.
+Local builds, API tests, and configuration tests can validate the repository changes. An actual Vercel deployment still needs a production smoke test after your Django environment variables are configured.
