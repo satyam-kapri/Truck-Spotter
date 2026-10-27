@@ -59,7 +59,7 @@ The backend owns all risk calculations. Route intervals use the more restrictive
 
 Use `.env.example` as a reference. Environment variables are read from the process; `.env` is not loaded automatically. Set `MAPBOX_TOKEN` for Mapbox routing, or `ROUTING_BASE_URL` for your own OSRM-compatible provider. Keys stay server-side.
 
-The no-key defaults use public OSRM and Photon demonstration services. Check applicable usage policies before sustained hosted traffic; replace demonstration services with an appropriate provider. The map uses OpenFreeMap's Positron vector basemap with its required attribution. Open-Meteo usage/licensing must fit the hosting purpose. Forecast requests are batched in groups of 25 with at most three concurrent workers; HTTP connect/read timeouts are bounded. Provider errors are surfaced without automatic fallbacks to fake data.
+The no-key defaults use public OSRM and Photon demonstration services. Check applicable usage policies before sustained hosted traffic; replace demonstration services with an appropriate provider. The map uses OpenFreeMap's dark vector basemap with custom slate styling and its required attribution. Open-Meteo usage/licensing must fit the hosting purpose. Forecast requests are batched in groups of 25 with at most three concurrent workers; HTTP connect/read timeouts are bounded. Provider errors are surfaced without automatic fallbacks to fake data.
 
 Official references: [OSRM API](https://project-osrm.org/docs/v5.24.0/api/), [Photon](https://photon.komoot.io/), [Open-Meteo forecast](https://open-meteo.com/en/docs), [Mapbox directions](https://docs.mapbox.com/api/navigation/directions/), [OSM tile policy](https://operations.osmfoundation.org/policies/tiles/).
 
