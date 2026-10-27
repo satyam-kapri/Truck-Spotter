@@ -35,7 +35,9 @@ input:focus,select:focus { outline: 1px solid #37b7b0; }
 .header-data-status>span { width:7px;height:7px;border-radius:50%;background:#34d5c6;box-shadow:0 0 0 5px #2bd2c012; }
 .help-link { color:#8fa0b6;font-size:10px; }
 .avatar { color:#afc6dd;background:#172d43;border:1px solid #253d54;font-size:11px;font-weight:600;border-radius:10px;width:34px;height:34px; }
-.mobile-brand { display:none; }
+.header-brand { display:flex;align-items:center;gap:9px;border-right:1px solid #253b4f;padding-right:20px;flex-shrink:0; }
+.header-brand>span:last-child { font-family:Manrope,sans-serif;font-size:28px;font-weight:500;letter-spacing:-1.6px;color:#f1f7fb;line-height:1; }
+.header-brand .brand-symbol { flex-shrink:0; }
 main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
 .sidebar { width:316px;background:#0a1b2e;border-right:1px solid #1b3146;padding:24px 20px 0;scrollbar-width:thin;scrollbar-color:#263e52 transparent; }
 .planner-heading .eyebrow { color:#5b8399;font-size:8px;letter-spacing:1.4px; }
@@ -153,7 +155,8 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
 .slider-ticks button:hover { color:#5cd8ca; }
 .forecast-foot { border-color:#172e43;margin-top:16px;padding-top:12px; }
 .forecast-foot>span { color:#5f819b;font-size:7px; }
-.heat-scale i { background:linear-gradient(to right,#38bfa9,#d6ba65,#e17791); }
+.forecast-foot>.heat-scale { font-size:11px;color:#a9bed2;gap:9px;flex-shrink:0; }
+.heat-scale i { width:90px;height:9px;border-radius:5px;border:1px solid #ffffff18;background:linear-gradient(to right,#38bfa9,#d6ba65,#e17791); }
 .workspace-foot { background:#07192c;color:#3e627e;border-top:1px solid #112c41;padding:10px 21px;font-size:6px; }
 .workspace-foot button { color:#688da7;font-size:7px; }
 .checkpoint-panel { background:#0b2236;border:1px solid #2d5063;border-radius:10px;box-shadow:0 10px 30px #0004;left:16px;color:#dae8f2; }
@@ -201,9 +204,10 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
   .app-shell { display:flex;flex-direction:column;height:auto;min-height:100dvh;border:0;border-radius:0;overflow:visible; }
   .topbar { height:66px;padding:0 17px;flex-shrink:0; }
   .workspace-title { gap:9px; }
-  .workspace-title h1 { font-size:18px;letter-spacing:-.5px; }
-  .mobile-brand { display:block; }
-  .mobile-brand .brand-symbol { width:24px;height:26px;transform:scale(.85); }
+  .workspace-title h1 { font-size:14px;letter-spacing:-.4px;white-space:nowrap; }
+  .header-brand { gap:6px;padding-right:12px; }
+  .header-brand>span:last-child { font-size:23px;letter-spacing:-1.2px; }
+  .header-brand .brand-symbol { width:24px;height:26px;transform:scale(.85); }
   .header-context,.topbar .help-link { display:none; }
   .topbar nav { gap:10px; }
   .header-data-status { padding:7px 9px;font-size:10px;border-radius:8px; }
@@ -245,6 +249,9 @@ main { grid-column:1;grid-row:2;height:auto;min-height:0;overflow:hidden; }
   .weather-tabs button { font-size:0;padding:9px;gap:0; }
   .timeline { margin-top:24px; }
   .forecast-foot>span { font-size:7px; }
+  .forecast-foot>span:first-child { max-width:55%; }
+  .forecast-foot>.heat-scale { font-size:10px;gap:7px; }
+  .heat-scale i { width:64px;height:8px; }
   .workspace-foot { font-size:6px; }
   .checkpoint-panel { width:calc(100% - 64px);left:12px; }
   .analysis-warnings { margin:5px 12px 0;font-size:8px; }
