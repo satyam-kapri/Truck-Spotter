@@ -2,7 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import * as maplibregl from 'maplibre-gl';
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-import {ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, ChevronRight, Clock3, CloudRain, Compass, Info, Layers3, LoaderCircle, MapPin, Navigation, Play, ShieldCheck, Snowflake, Truck, Wind, X, Pause, LocateFixed, ClipboardList, CloudSun, ChevronsUpDown, CircleHelp} from 'lucide-react';
+import {ArrowDown, ArrowRight, ArrowUpRight, Check, ChevronDown, ChevronRight, Clock3, CloudRain, Compass, Info, Layers3, LoaderCircle, MapPin, Navigation, Play, ShieldCheck, Snowflake, Truck, Wind, X, Pause, LocateFixed} from 'lucide-react';
 import type {Analysis, Checkpoint, Corridor, Place, RiskLevel, Route} from './types';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
@@ -27,7 +27,6 @@ function PlaceInput({label,value,onChange,disabled,kind}:{label:string;value:Pla
 }
 
 function App(){
- const [navSection,setNavSection]=useState('routes');
  const [mode,setMode]=useState<'demo'|'live'>('demo'),[origin,setOrigin]=useState(ORIGIN),[destination,setDestination]=useState(DEST);
  const [departure,setDeparture]=useState(()=>{const d=new Date();d.setMinutes(0,0,0);d.setHours(d.getHours()+1);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)});
  const [load,setLoad]=useState('28000'),[spacing,setSpacing]=useState(25),[analysis,setAnalysis]=useState<Analysis|null>(null),[selected,setSelected]=useState('route-2');
@@ -118,7 +117,6 @@ function App(){
  const dirty=analysis&&(analysis.mode!==mode||analysis.load_lb!==Number(load)||analysis.spacing_miles!==spacing||new Date(analysis.departure).getTime()!==new Date(departure).getTime()||mode==='live'&&(analysis.origin.label!==origin.label||analysis.destination.label!==destination.label));
 
  return <div className="app-shell">
-  <aside className="navigation-rail"><a className="rail-brand" href="/" aria-label="Spotter home"><span className="brand-symbol"><i/><i/><i/></span><span><strong>Spotter TMS</strong><small>Weather-aware routing</small></span><ChevronsUpDown size={15}/></a><div className="rail-section-label">WORKSPACE</div><nav aria-label="Workspace"><button className={navSection==='routes'?'active':''} onClick={()=>{setNavSection('routes');setMobileTab('trip');document.querySelector('.sidebar')?.scrollTo({top:0,behavior:'smooth'})}}><ClipboardList size={20}/> Route planner</button><button className={navSection==='forecast'?'active':''} onClick={()=>{setNavSection('forecast');setMobileTab('map');document.getElementById('forecast')?.scrollIntoView({behavior:'smooth',block:'nearest'})}}><CloudSun size={20}/> Weather forecast</button><button onClick={()=>setShowRules(true)}><ShieldCheck size={20}/> Risk methodology</button></nav><div className="rail-bottom"><div className="rail-truck"><Truck size={22}/></div><strong>Built for the road.</strong><p>Weather and load insights<br/>for every mile ahead.</p><button onClick={()=>setShowRules(true)}><CircleHelp size={15}/> How Spotter works <ArrowUpRight size={13}/></button><div className="rail-version"><span/> SYSTEM READY <span>v1.0</span></div></div></aside>
   <header className="topbar"><div className="workspace-title"><span className="mobile-brand"><span className="brand-symbol"><i/><i/><i/></span></span><h1>Route planner</h1><span className="header-context"><Truck size={16}/> Weather-aware dispatch</span></div><nav><span className="header-data-status"><span/>{analysis?.mode==='live'?'Live':'Demo'}</span><button className="help-link" onClick={()=>setShowRules(true)}><Info size={16}/> How risk works</button><span className="avatar">SK</span></nav></header>
   <div className="mobile-tabs"><button className={mobileTab==='trip'?'active':''} onClick={()=>setMobileTab('trip')}>Plan & compare</button><button className={mobileTab==='map'?'active':''} onClick={()=>setMobileTab('map')}>Weather map</button></div>
   <main>
